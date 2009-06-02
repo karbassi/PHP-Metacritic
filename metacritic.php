@@ -16,9 +16,55 @@
  */
 class Metacritic
 {
+   // Time, in minutes, before checking for file again.
+   private $CACHE_TIME = 10;
+   
    private static $score = null;
    private static $title = null;
-   private static $type  = null;
+   private static $type = null;
+   private static $error = null;
+   private $last_retrieved = 0;
+   
+   
+   // 
+   private $url = null;
+   
+   
+   private $TYPES = array(
+      // Movies
+      'film',
+      
+      // DVDs
+      'video',
+      
+      // TV
+      'tv',
+      
+      // Music
+      'music',
+      
+      // Games
+      'games',
+      
+      // Books
+      'books'
+   );
+   
+   // Game platforms
+   private $PLATFORMS = array(
+      // Sony Playstation
+      'ps3', 'ps2', 'playstation', 'psp',
+      // Microsoft Xbox
+      'xbox360', 'xbox',
+      // Nintendo
+      'wii', 'ds', 'gba', 'gamecube', 'n64',
+      // Other platforms
+      'pc', 'ngage', 'dreamcast'
+   );
+   
+   
+      
+      
    
    /**
     * Constructor
@@ -28,12 +74,25 @@ class Metacritic
     * @return void
     * @author Ali Karbassi
     */
-   public function __construct($title)
+   // public function __construct($title, $type='games', $platform='xbox360',
+   //    $CACHE_TIME=10)
+   // {
+   public function __construct($options=array())
    {
+      if (empty($options)) {
+         $this->error = "Options not set";
+         return $this->error;
+      }
       $this->title = $title;
-      $url = 'http://www.metacritic.com/print/games/platforms/xbox360/'
-         . preg_replace("/[^a-zA-Z0-9s]/", "", strtolower($title));
-      $this->score = $this->parseScore($this->getPage($url));
+      $this->url = 'http://www.metacritic.com/print/' . $type
+         . '/platforms/' . $platform . '/'
+         . preg_replace("/[^a-zA-Z0-9s]/", "", strtolower($this->title));
+      $this->score = $this->parseScore($this->getPage($this->url));
+   }
+   
+   public function getFresh()
+   {
+      $this->score = $this->parseScore($this->getPage($this->url));
    }
    
    
@@ -58,11 +117,15 @@ class Metacritic
     */
    private function getPage($url)
    {
-      $ch = curl_init($url);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      $score = curl_exec($ch);
-      curl_close($ch);
-      return $score;
+      if (time() >= ($this->last_retrieved + (CACHE_TIME * 60))) {
+         $ch = curl_init($url);
+         curl_setopt($ch, CURLOPT_HEADER, 0);
+         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+         $this->score = curl_exec($ch);
+         curl_close($ch);
+         $this->last_retrieved = time();
+      }
+      return $this->score;
    }
    
    /**
